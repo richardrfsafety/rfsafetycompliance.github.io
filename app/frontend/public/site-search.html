@@ -1,0 +1,889 @@
+"<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
+  <title>RF Safety Compliance — Site Search</title>
+  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />
+  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />
+  <link href=\"https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap\" rel=\"stylesheet\" />
+  <style>
+    /* =====================================================================
+       RF Safety Compliance — Site Search
+       Single self-contained file. Drop this on GitHub Pages (or any static
+       host) and iframe-embed into Google Sites.
+
+       SWAP-IN POINTS (search the file for these markers):
+         (1) GOOGLE_MAPS_API_KEY  – your Maps JS API key
+         (2) DATA_SOURCE           – live Google Sheet, CSV, or inline JSON
+       ===================================================================== */
+
+    :root {
+      --brand-ink:        #0d2436;
+      --brand-ink-soft:   #1c3a52;
+      --brand-accent:     #c8102e;   /* RF safety red */
+      --brand-accent-soft:#fde6ea;
+      --bg:               #f6f7f9;
+      --surface:          #ffffff;
+      --border:           #e3e6ea;
+      --border-strong:    #c9cfd6;
+      --text:             #1a2330;
+      --text-soft:        #586472;
+      --text-muted:       #8993a1;
+      --shadow-sm: 0 1px 2px rgba(13, 36, 54, 0.06);
+      --shadow-md: 0 6px 18px rgba(13, 36, 54, 0.08);
+      --radius:    8px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lato', system-ui, -apple-system, sans-serif;
+      font-weight: 400;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.45;
+    }
+
+    /* ---------- Header ---------- */
+    .app-header {
+      background: var(--brand-ink);
+      color: #fff;
+      padding: 14px 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 3px solid var(--brand-accent);
+    }
+    .app-header .logo-mark {
+      width: 38px; height: 38px;
+      border: 2px solid var(--brand-accent);
+      border-radius: 50%;
+      display: grid; place-items: center;
+      font-weight: 900; font-size: 13px; letter-spacing: 0.5px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .app-header h1 {
+      margin: 0;
+      font-weight: 300;
+      font-size: 20px;
+      letter-spacing: 0.4px;
+    }
+    .app-header h1 strong { font-weight: 700; }
+    .app-header .sub {
+      margin-left: auto;
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+    }
+
+    /* ---------- Layout ---------- */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 18px;
+      padding: 18px;
+      min-height: calc(100vh - 64px);
+    }
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; }
+    }
+
+    /* ---------- Filters panel ---------- */
+    .filters {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-self: start;
+      position: sticky;
+      top: 18px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .filters h2 {
+      margin: 0 0 4px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--brand-ink);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-soft);
+    }
+    .filter-group input,
+    .filter-group select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: var(--brand-ink-soft);
+      box-shadow: 0 0 0 3px rgba(28, 58, 82, 0.12);
+    }
+    .filter-actions {
+      display: flex; gap: 8px; margin-top: 4px;
+    }
+    .btn {
+      flex: 1;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 120ms ease, transform 80ms ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--brand-ink); color: #fff; }
+    .btn-primary:hover { background: var(--brand-ink-soft); }
+    .btn-ghost {
+      background: #fff;
+      color: var(--brand-ink);
+      border-color: var(--border-strong);
+    }
+    .btn-ghost:hover { background: var(--bg); }
+
+    .result-count {
+      font-size: 12px;
+      color: var(--text-soft);
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+    .result-count b { color: var(--brand-ink); }
+
+    /* ---------- Main area ---------- */
+    .main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+    .map-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      position: relative;
+    }
+    #map { width: 100%; height: 540px; }
+    @media (max-width: 900px) { #map { height: 380px; } }
+
+    .map-key-warning {
+      position: absolute; top: 12px; left: 12px;
+      background: #fff8e5;
+      color: #6b4d00;
+      border: 1px solid #f0d68d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      max-width: 80%;
+      box-shadow: var(--shadow-md);
+      z-index: 5;
+    }
+    .map-key-warning b { color: #4a3500; }
+
+    /* ---------- Site details / table ---------- */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .table-card .table-head {
+      padding: 14px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%);
+    }
+    .table-card h3 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--brand-ink);
+    }
+    .table-wrap { max-height: 380px; overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      position: sticky; top: 0;
+      background: #fafbfc;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-soft);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tbody tr {
+      cursor: pointer;
+      transition: background 100ms ease;
+    }
+    tbody tr:hover { background: #f6f9fc; }
+    tbody tr.is-active { background: #eff5fa; }
+    tbody tr.is-active td:first-child { box-shadow: inset 3px 0 0 var(--brand-accent); }
+    .pdf-link {
+      color: var(--brand-accent);
+      text-decoration: none;
+      font-weight: 700;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .pdf-link:hover { text-decoration: underline; }
+    .pin-dot {
+      display: inline-block; width: 10px; height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: middle;
+      border: 1.5px solid rgba(0,0,0,0.2);
+    }
+    .empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* ---------- Info window ---------- */
+    .gm-info {
+      font-family: 'Lato', sans-serif;
+      max-width: 280px;
+    }
+    .gm-info h4 {
+      margin: 0 0 6px 0;
+      color: var(--brand-ink);
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .gm-info .gm-meta {
+      font-size: 12px; color: var(--text-soft); margin-bottom: 8px;
+    }
+    .gm-info .gm-photo {
+      width: 100%; max-height: 140px; object-fit: cover;
+      border-radius: 6px; margin-bottom: 8px;
+      background: #eee;
+    }
+    .gm-info .gm-content {
+      font-size: 13px; color: var(--text); margin-bottom: 8px;
+    }
+
+    /* Scrollbar polish */
+    .filters::-webkit-scrollbar,
+    .table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+    .filters::-webkit-scrollbar-thumb,
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: var(--border-strong); border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header class=\"app-header\">
+    <div class=\"logo-mark\" aria-hidden=\"true\">RF</div>
+    <h1><strong>RF Safety Compliance</strong> &middot; Site Search</h1>
+    <span class=\"sub\">Filter sites &middot; click pins &middot; download safety sheets</span>
+  </header>
+
+  <div class=\"app-shell\">
+    <!-- ========== Filters ========== -->
+    <aside class=\"filters\" aria-label=\"Filter sites\">
+      <h2>Filter Sites</h2>
+
+      <div class=\"filter-group\">
+        <label for=\"f-owner\">Owner</label>
+        <select id=\"f-owner\"><option value=\"\">All Owners</option></select>
+      </div>
+
+      <div class=\"filter-group\">
+        <label for=\"f-state\">State</label>
+        <select id=\"f-state\"><option value=\"\">All States</option></select>
+      </div>
+
+      <div class=\"filter-group\">
+        <label for=\"f-siteid\">Site ID</label>
+        <input id=\"f-siteid\" type=\"text\" placeholder=\"e.g. WUPW\" autocomplete=\"off\" />
+      </div>
+
+      <div class=\"filter-group\">
+        <label for=\"f-name\">Site Name</label>
+        <input id=\"f-name\" type=\"text\" placeholder=\"Site name contains…\" autocomplete=\"off\" />
+      </div>
+
+      <div class=\"filter-group\">
+        <label for=\"f-address\">Address</label>
+        <input id=\"f-address\" type=\"text\" placeholder=\"Street address contains…\" autocomplete=\"off\" />
+      </div>
+
+      <div class=\"filter-group\">
+        <label for=\"f-city\">City</label>
+        <input id=\"f-city\" type=\"text\" placeholder=\"City contains…\" autocomplete=\"off\" />
+      </div>
+
+      <div class=\"filter-group\">
+        <label for=\"f-zip\">Zip</label>
+        <input id=\"f-zip\" type=\"text\" placeholder=\"Zip starts with…\" autocomplete=\"off\" />
+      </div>
+
+      <div class=\"filter-actions\">
+        <button class=\"btn btn-ghost\" id=\"btn-reset\" type=\"button\">Reset</button>
+      </div>
+
+      <div class=\"result-count\" id=\"result-count\"></div>
+    </aside>
+
+    <!-- ========== Main: Map + Table ========== -->
+    <main class=\"main\">
+      <section class=\"map-card\">
+        <div id=\"map\" role=\"application\" aria-label=\"Map of RF safety sites\"></div>
+        <div id=\"map-key-warning\" class=\"map-key-warning\" style=\"display:none\">
+          <b>Setup required:</b> add your Google Maps API key in this file
+          (search for <code>GOOGLE_MAPS_API_KEY</code>). The map below is showing
+          a development-mode preview.
+        </div>
+      </section>
+
+      <section class=\"table-card\">
+        <div class=\"table-head\">
+          <h3>Site Details</h3>
+          <span id=\"table-count\" style=\"font-size:12px;color:var(--text-soft);\"></span>
+        </div>
+        <div class=\"table-wrap\">
+          <table>
+            <thead>
+              <tr>
+                <th style=\"width:40px\"></th>
+                <th>Site ID</th>
+                <th>Site Name</th>
+                <th>Owner</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Zip</th>
+                <th>RF Safety Sheet</th>
+              </tr>
+            </thead>
+            <tbody id=\"tbody\"></tbody>
+          </table>
+          <div id=\"empty\" class=\"empty\" style=\"display:none\">No sites match the current filters.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- =====================================================================
+       (2) DATA_SOURCE
+       Sample data is inline below. To use a live Google Sheet, replace
+       SAMPLE_SITES with a fetch() call. See README-SETUP.md.
+       Required columns:
+         Owner, Site ID, Site Name, Address, City, State, Zip,
+         Latitude, Longitude, Photo, Content, Pin Color,
+         RF Safety Sheet, URL, Image
+       ===================================================================== -->
+  <script>
+    /* ----- Sample data (swap to live Google Sheet — see README) ----- */
+    const SAMPLE_SITES = [
+      {
+        \"Owner\": \"American Spirit Media\",
+        \"Site ID\": \"WUPW\",
+        \"Site Name\": \"WUPW Tower\",
+        \"Address\": \"4310 Corduroy Road\",
+        \"City\": \"Oregon\",
+        \"State\": \"OH\",
+        \"Zip\": \"43616\",
+        \"Latitude\": 41.656111,
+        \"Longitude\": -83.444722,
+        \"Photo\": \"\",
+        \"Content\": \"Primary FOX broadcast tower. Multiple co-located transmitters on site.\",
+        \"Pin Color\": \"Blue\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://drive.google.com/file/d/1DaC_xLimNj3CRWF0ZfFI40v7DksikKXF/view?usp=sharing\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"American Spirit Media\",
+        \"Site ID\": \"WLIO\",
+        \"Site Name\": \"WLIO Lima Tower\",
+        \"Address\": \"1424 Rice Avenue\",
+        \"City\": \"Lima\",
+        \"State\": \"OH\",
+        \"Zip\": \"45805\",
+        \"Latitude\": 40.7251,
+        \"Longitude\": -84.1349,
+        \"Photo\": \"\",
+        \"Content\": \"NBC/FOX shared tower facility.\",
+        \"Pin Color\": \"Blue\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/wlio.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Gray Television\",
+        \"Site ID\": \"KOLO\",
+        \"Site Name\": \"KOLO Reno\",
+        \"Address\": \"4850 Ampere Drive\",
+        \"City\": \"Reno\",
+        \"State\": \"NV\",
+        \"Zip\": \"89502\",
+        \"Latitude\": 39.5299,
+        \"Longitude\": -119.7634,
+        \"Photo\": \"\",
+        \"Content\": \"ABC affiliate. Rooftop antenna access requires prior coordination.\",
+        \"Pin Color\": \"Red\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/kolo.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Gray Television\",
+        \"Site ID\": \"KKTV\",
+        \"Site Name\": \"KKTV Cheyenne Mountain\",
+        \"Address\": \"Cheyenne Mountain Rd\",
+        \"City\": \"Colorado Springs\",
+        \"State\": \"CO\",
+        \"Zip\": \"80906\",
+        \"Latitude\": 38.7421,
+        \"Longitude\": -104.8633,
+        \"Photo\": \"\",
+        \"Content\": \"Mountain-top transmitter. High RF exposure zones — see safety sheet.\",
+        \"Pin Color\": \"Red\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/kktv.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Sinclair Broadcast Group\",
+        \"Site ID\": \"WBFF\",
+        \"Site Name\": \"WBFF Baltimore\",
+        \"Address\": \"2000 W 41st St\",
+        \"City\": \"Baltimore\",
+        \"State\": \"MD\",
+        \"Zip\": \"21211\",
+        \"Latitude\": 39.3411,
+        \"Longitude\": -76.6390,
+        \"Photo\": \"\",
+        \"Content\": \"FOX affiliate primary tower.\",
+        \"Pin Color\": \"Green\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/wbff.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Sinclair Broadcast Group\",
+        \"Site ID\": \"KOMO\",
+        \"Site Name\": \"KOMO Seattle\",
+        \"Address\": \"140 4th Ave N\",
+        \"City\": \"Seattle\",
+        \"State\": \"WA\",
+        \"Zip\": \"98109\",
+        \"Latitude\": 47.6195,
+        \"Longitude\": -122.3514,
+        \"Photo\": \"\",
+        \"Content\": \"ABC affiliate downtown facility.\",
+        \"Pin Color\": \"Green\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/komo.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Nexstar Media Group\",
+        \"Site ID\": \"KTLA\",
+        \"Site Name\": \"KTLA Mt. Wilson\",
+        \"Address\": \"Mt. Wilson Observatory Rd\",
+        \"City\": \"Mount Wilson\",
+        \"State\": \"CA\",
+        \"Zip\": \"91023\",
+        \"Latitude\": 34.2257,
+        \"Longitude\": -118.0589,
+        \"Photo\": \"\",
+        \"Content\": \"Mt. Wilson antenna farm. Multiple high-power FM/TV transmitters.\",
+        \"Pin Color\": \"Yellow\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/ktla.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Nexstar Media Group\",
+        \"Site ID\": \"WPIX\",
+        \"Site Name\": \"WPIX Empire State\",
+        \"Address\": \"20 W 34th St\",
+        \"City\": \"New York\",
+        \"State\": \"NY\",
+        \"Zip\": \"10001\",
+        \"Latitude\": 40.7484,
+        \"Longitude\": -73.9857,
+        \"Photo\": \"\",
+        \"Content\": \"Master antenna installation. Strict access control required.\",
+        \"Pin Color\": \"Yellow\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/wpix.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Tegna Inc.\",
+        \"Site ID\": \"WUSA\",
+        \"Site Name\": \"WUSA Tenleytown\",
+        \"Address\": \"4001 Brandywine St NW\",
+        \"City\": \"Washington\",
+        \"State\": \"DC\",
+        \"Zip\": \"20016\",
+        \"Latitude\": 38.9494,
+        \"Longitude\": -77.0772,
+        \"Photo\": \"\",
+        \"Content\": \"CBS affiliate. Mast climber required for upper levels.\",
+        \"Pin Color\": \"Purple\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/wusa.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Tegna Inc.\",
+        \"Site ID\": \"KARE\",
+        \"Site Name\": \"KARE Shoreview\",
+        \"Address\": \"8811 Olson Memorial Hwy\",
+        \"City\": \"Golden Valley\",
+        \"State\": \"MN\",
+        \"Zip\": \"55427\",
+        \"Latitude\": 45.0099,
+        \"Longitude\": -93.1574,
+        \"Photo\": \"\",
+        \"Content\": \"NBC affiliate transmitter site.\",
+        \"Pin Color\": \"Purple\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/kare.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Cox Media Group\",
+        \"Site ID\": \"WSB\",
+        \"Site Name\": \"WSB Atlanta\",
+        \"Address\": \"1601 W Peachtree St NE\",
+        \"City\": \"Atlanta\",
+        \"State\": \"GA\",
+        \"Zip\": \"30309\",
+        \"Latitude\": 33.7901,
+        \"Longitude\": -84.3858,
+        \"Photo\": \"\",
+        \"Content\": \"ABC affiliate flagship. Coordinate with site engineer.\",
+        \"Pin Color\": \"Orange\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/wsb.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      },
+      {
+        \"Owner\": \"Cox Media Group\",
+        \"Site ID\": \"KIRO\",
+        \"Site Name\": \"KIRO Tiger Mtn\",
+        \"Address\": \"Tiger Mountain State Forest\",
+        \"City\": \"Issaquah\",
+        \"State\": \"WA\",
+        \"Zip\": \"98027\",
+        \"Latitude\": 47.4924,
+        \"Longitude\": -121.9618,
+        \"Photo\": \"\",
+        \"Content\": \"Mountain-top facility. Hike-in access only.\",
+        \"Pin Color\": \"Orange\",
+        \"RF Safety Sheet\": \"RF Safety Sheet\",
+        \"URL\": \"https://example.com/rfsafety/kiro.pdf\",
+        \"Image\": \"https://storage.googleapis.com/aw-gapps-ressources/at/addons/file-cabinet/assets/icon-pdf-flat.png\"
+      }
+    ];
+
+    /* Map color names to hex for table dot + Google Maps pin */
+    const PIN_COLORS = {
+      blue:    \"#1976d2\",
+      red:     \"#d32f2f\",
+      green:   \"#2e7d32\",
+      yellow:  \"#f9a825\",
+      orange:  \"#ef6c00\",
+      purple:  \"#7b1fa2\",
+      pink:    \"#c2185b\",
+      teal:    \"#00796b\",
+      brown:   \"#5d4037\",
+      black:   \"#212121\",
+      gray:    \"#616161\",
+      grey:    \"#616161\",
+      white:   \"#fafafa\"
+    };
+    const colorOf = (name) => PIN_COLORS[(name || \"\").toString().toLowerCase().trim()] || \"#1976d2\";
+
+    /* ===================== State + DOM refs ===================== */
+    let SITES = SAMPLE_SITES.slice();
+    let map, infoWindow;
+    const markers = new Map();   // siteId -> google.maps.Marker
+    let activeSiteId = null;
+
+    const $ = (id) => document.getElementById(id);
+    const tbody = $(\"tbody\");
+    const empty = $(\"empty\");
+    const tableCount = $(\"table-count\");
+    const resultCount = $(\"result-count\");
+
+    /* ===================== Filter logic ===================== */
+    const FILTER_FIELDS = [
+      [\"f-owner\",   \"Owner\",     \"exact\"],
+      [\"f-state\",   \"State\",     \"exact\"],
+      [\"f-siteid\",  \"Site ID\",   \"contains\"],
+      [\"f-name\",    \"Site Name\", \"contains\"],
+      [\"f-address\", \"Address\",   \"contains\"],
+      [\"f-city\",    \"City\",      \"contains\"],
+      [\"f-zip\",     \"Zip\",       \"starts\"]
+    ];
+
+    function getFilteredSites() {
+      const filters = {};
+      FILTER_FIELDS.forEach(([elId, field, mode]) => {
+        const v = ($(elId).value || \"\").trim().toLowerCase();
+        if (v) filters[field] = { v, mode };
+      });
+      return SITES.filter((s) => {
+        for (const field in filters) {
+          const { v, mode } = filters[field];
+          const hay = (s[field] || \"\").toString().toLowerCase();
+          if (mode === \"exact\"    && hay !== v) return false;
+          if (mode === \"contains\" && !hay.includes(v)) return false;
+          if (mode === \"starts\"   && !hay.startsWith(v)) return false;
+        }
+        return true;
+      });
+    }
+
+    /* ===================== Populate dropdowns ===================== */
+    function populateCategoryFilters() {
+      const owners = [...new Set(SITES.map(s => s.Owner).filter(Boolean))].sort();
+      const states = [...new Set(SITES.map(s => s.State).filter(Boolean))].sort();
+      const ownerSel = $(\"f-owner\");
+      const stateSel = $(\"f-state\");
+      owners.forEach(o => ownerSel.insertAdjacentHTML(\"beforeend\", `<option value=\"${escapeHtml(o)}\">${escapeHtml(o)}</option>`));
+      states.forEach(s => stateSel.insertAdjacentHTML(\"beforeend\", `<option value=\"${escapeHtml(s)}\">${escapeHtml(s)}</option>`));
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? \"\")
+        .replace(/&/g, \"&amp;\")
+        .replace(/</g, \"&lt;\")
+        .replace(/>/g, \"&gt;\")
+        .replace(/\"/g, \"&quot;\")
+        .replace(/'/g, \"&#39;\");
+    }
+
+    /* ===================== Render table ===================== */
+    function renderTable(filtered) {
+      tbody.innerHTML = \"\";
+      if (!filtered.length) {
+        empty.style.display = \"block\";
+        tableCount.textContent = \"0 sites\";
+        return;
+      }
+      empty.style.display = \"none\";
+      tableCount.textContent = `${filtered.length} site${filtered.length === 1 ? \"\" : \"s\"}`;
+
+      const frag = document.createDocumentFragment();
+      filtered.forEach((s) => {
+        const tr = document.createElement(\"tr\");
+        tr.dataset.siteId = s[\"Site ID\"];
+        if (s[\"Site ID\"] === activeSiteId) tr.classList.add(\"is-active\");
+
+        tr.innerHTML = `
+          <td><span class=\"pin-dot\" style=\"background:${colorOf(s[\"Pin Color\"])}\"></span></td>
+          <td><b>${escapeHtml(s[\"Site ID\"])}</b></td>
+          <td>${escapeHtml(s[\"Site Name\"])}</td>
+          <td>${escapeHtml(s[\"Owner\"])}</td>
+          <td>${escapeHtml(s[\"City\"])}</td>
+          <td>${escapeHtml(s[\"State\"])}</td>
+          <td>${escapeHtml(s[\"Zip\"])}</td>
+          <td>${
+            s[\"URL\"]
+              ? `<a class=\"pdf-link\" href=\"${escapeHtml(s[\"URL\"])}\" target=\"_blank\" rel=\"noopener\" data-testid=\"pdf-link-${escapeHtml(s[\"Site ID\"])}\">${escapeHtml(s[\"RF Safety Sheet\"] || \"RF Safety Sheet\")} ↗</a>`
+              : `<span style=\"color:var(--text-muted)\">—</span>`
+          }</td>
+        `;
+        tr.addEventListener(\"click\", (e) => {
+          if (e.target.closest(\"a\")) return; // don't hijack PDF link
+          focusSite(s[\"Site ID\"]);
+        });
+        frag.appendChild(tr);
+      });
+      tbody.appendChild(frag);
+    }
+
+    /* ===================== Map ===================== */
+    function initMap() {
+      // eslint-disable-next-line no-undef
+      map = new google.maps.Map(document.getElementById(\"map\"), {
+        center: { lat: 39.5, lng: -98.35 },
+        zoom: 4,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
+        styles: [
+          { featureType: \"poi\", stylers: [{ visibility: \"off\" }] }
+        ]
+      });
+      // eslint-disable-next-line no-undef
+      infoWindow = new google.maps.InfoWindow();
+
+      renderMarkers(SITES);
+      applyFilters(); // initial render
+    }
+
+    function clearMarkers() {
+      markers.forEach((m) => m.setMap(null));
+      markers.clear();
+    }
+
+    function pinIcon(hex) {
+      // SVG-based pin so colors render reliably
+      const svg = `
+        <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"40\" viewBox=\"0 0 28 40\">
+          <path d=\"M14 0C6.27 0 0 6.27 0 14c0 9.5 14 26 14 26s14-16.5 14-26C28 6.27 21.73 0 14 0z\" fill=\"${hex}\" stroke=\"rgba(0,0,0,0.35)\" stroke-width=\"1\"/>
+          <circle cx=\"14\" cy=\"14\" r=\"5\" fill=\"#fff\"/>
+        </svg>`;
+      return {
+        url: \"data:image/svg+xml;charset=UTF-8,\" + encodeURIComponent(svg),
+        // eslint-disable-next-line no-undef
+        scaledSize: new google.maps.Size(28, 40),
+        // eslint-disable-next-line no-undef
+        anchor: new google.maps.Point(14, 40)
+      };
+    }
+
+    function renderMarkers(list) {
+      clearMarkers();
+      // eslint-disable-next-line no-undef
+      const bounds = new google.maps.LatLngBounds();
+      list.forEach((s) => {
+        const lat = parseFloat(s.Latitude);
+        const lng = parseFloat(s.Longitude);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+        // eslint-disable-next-line no-undef
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: `${s[\"Site ID\"]} — ${s[\"Site Name\"]}`,
+          icon: pinIcon(colorOf(s[\"Pin Color\"]))
+        });
+        marker.addListener(\"click\", () => openInfo(s, marker));
+        markers.set(s[\"Site ID\"], marker);
+        bounds.extend({ lat, lng });
+      });
+      if (list.length === 1) {
+        map.setCenter(list[0] && { lat: parseFloat(list[0].Latitude), lng: parseFloat(list[0].Longitude) });
+        map.setZoom(11);
+      } else if (list.length > 1) {
+        map.fitBounds(bounds, 60);
+      }
+    }
+
+    function openInfo(s, marker) {
+      activeSiteId = s[\"Site ID\"];
+      const html = `
+        <div class=\"gm-info\">
+          <h4>${escapeHtml(s[\"Site Name\"])} <span style=\"color:var(--text-muted);font-weight:400\">(${escapeHtml(s[\"Site ID\"])})</span></h4>
+          <div class=\"gm-meta\">
+            ${escapeHtml(s[\"Address\"])}<br/>
+            ${escapeHtml(s[\"City\"])}, ${escapeHtml(s[\"State\"])} ${escapeHtml(s[\"Zip\"])}<br/>
+            <i>${escapeHtml(s[\"Owner\"])}</i>
+          </div>
+          ${s[\"Photo\"] ? `<img class=\"gm-photo\" src=\"${escapeHtml(s[\"Photo\"])}\" alt=\"\"/>` : \"\"}
+          ${s[\"Content\"] ? `<div class=\"gm-content\">${escapeHtml(s[\"Content\"])}</div>` : \"\"}
+          ${s[\"URL\"] ? `<a class=\"pdf-link\" href=\"${escapeHtml(s[\"URL\"])}\" target=\"_blank\" rel=\"noopener\">${s[\"Image\"] ? `<img src=\"${escapeHtml(s[\"Image\"])}\" alt=\"\" style=\"width:16px;height:16px;vertical-align:middle\"/>` : \"\"} ${escapeHtml(s[\"RF Safety Sheet\"] || \"RF Safety Sheet\")} ↗</a>` : \"\"}
+        </div>`;
+      infoWindow.setContent(html);
+      infoWindow.open({ map, anchor: marker });
+      // highlight row
+      [...tbody.querySelectorAll(\"tr\")].forEach((tr) => {
+        tr.classList.toggle(\"is-active\", tr.dataset.siteId === activeSiteId);
+      });
+    }
+
+    function focusSite(siteId) {
+      const m = markers.get(siteId);
+      const s = SITES.find((x) => x[\"Site ID\"] === siteId);
+      if (!m || !s || !map) return;
+      map.panTo(m.getPosition());
+      if (map.getZoom() < 8) map.setZoom(10);
+      openInfo(s, m);
+    }
+
+    /* ===================== Apply filters ===================== */
+    function applyFilters() {
+      const filtered = getFilteredSites();
+      renderTable(filtered);
+      if (map) renderMarkers(filtered);
+      resultCount.innerHTML = `Showing <b>${filtered.length}</b> of <b>${SITES.length}</b> sites`;
+    }
+
+    /* ===================== Wire up filter inputs ===================== */
+    function wireFilters() {
+      FILTER_FIELDS.forEach(([elId]) => {
+        const el = $(elId);
+        el.addEventListener(\"input\", applyFilters);
+        el.addEventListener(\"change\", applyFilters);
+      });
+      $(\"btn-reset\").addEventListener(\"click\", () => {
+        FILTER_FIELDS.forEach(([elId]) => { $(elId).value = \"\"; });
+        applyFilters();
+      });
+    }
+
+    /* ===================== Boot ===================== */
+    populateCategoryFilters();
+    wireFilters();
+    applyFilters(); // render table even before map loads
+
+    /* ===================== Google Maps loader =====================
+       (1) GOOGLE_MAPS_API_KEY — replace YOUR_GOOGLE_MAPS_API_KEY below.
+       Get a key at: https://console.cloud.google.com/google/maps-apis
+       Enable: Maps JavaScript API. Restrict the key to your domain.
+       =============================================================== */
+    (function loadGoogleMaps() {
+      const KEY = \"YOUR_GOOGLE_MAPS_API_KEY\";
+      if (KEY === \"YOUR_GOOGLE_MAPS_API_KEY\") {
+        $(\"map-key-warning\").style.display = \"block\";
+      }
+      window.initMap = initMap;
+      const s = document.createElement(\"script\");
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(KEY)}&callback=initMap&v=weekly`;
+      s.async = true;
+      s.defer = true;
+      s.onerror = () => {
+        document.getElementById(\"map\").innerHTML =
+          `<div style=\"padding:32px;text-align:center;color:#586472;font-family:Lato,sans-serif\">
+             Google Maps failed to load. Check your API key in the source.
+           </div>`;
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
+</body>
+</html>
+"
